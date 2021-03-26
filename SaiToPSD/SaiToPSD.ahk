@@ -9,23 +9,28 @@ firstTabY := 1040
 
 !F2::
 	while(true){
-		PixelGetColor, foundColor, firstTabX, firstTabY [, Mode]
+		PixelGetColor, foundColor, firstTabX, firstTabY, rgb
 		if(ErrorLevel != 0){ ;color was not found
+			msgbox, err
 			return	
 		}
 		
-		if(foundColor == noMoreTabsColor){
+		if(foundColor = noMoreTabsColor){
+			msgbox, done
 			return
 		}
 		sleep 20
 		
-		
-		click, firstTabX, firstTabY
+		mousemove, firstTabX, firstTabY, 5
+		click
 		sleep 20
 		
 		send, {Enter}
 		sleep 20
 		send, {Enter}
-		sleep 20
+		sleep 30000
 	
 	}
+	
+	
+
