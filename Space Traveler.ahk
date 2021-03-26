@@ -56,6 +56,8 @@ testMenu(){
 /**
  *  halts the program until warping is avalible again
  */
+ 
+ 
 waitForNextStarSystem(){
 	
 	;wait for loading screen to start

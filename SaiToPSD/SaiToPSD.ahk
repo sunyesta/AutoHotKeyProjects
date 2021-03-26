@@ -23,9 +23,9 @@ firstTabY := 1040
 		click, firstTabX, firstTabY
 		sleep 20
 		
-		send{enter}
+		send, {Enter}
 		sleep 20
-		send{enter}
+		send, {Enter}
 		sleep 20
 	
 	}
