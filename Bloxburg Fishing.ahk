@@ -17,8 +17,8 @@ global GREY_INCREMENT := 0x010101
 
 global CAST_BTN_LOC = new Point(960, 1080)
  
-global TLBobBoxPt = new Point(420,660)
-global BRBobBoxPt = new Point(1650,940)
+global TLBobBoxPt = new Point(344,785)
+global BRBobBoxPt = new Point(1572,909)
 
 global darkestBobColor = 0x3e3e3e
 global lightestBobColor = 0xc2c2c2
@@ -66,21 +66,19 @@ class Point{
  *  
  *  @return - true if the screen is grey color at that pixel
  */
-pixelCheckGrey(point){
-	PixelGetColor, colorAtPixel, xPixel, yPixel, RGB
-	
-	
-	blue:="0x" SubStr(colorAtPixel,3,2) ;substr is to get the piece
+checkIfGrey(inputColor){	
+
+	blue:="0x" SubStr(inputColor,3,2) ;substr is to get the piece
 	blue:=blue+0 ;add 0 is to convert it to the current number format
 
-	green:="0x" SubStr(colorAtPixel,5,2)
+	green:="0x" SubStr(inputColor,5,2)
 	green:=green+0
 
-	red:="0x" SubStr(colorAtPixel,7,2)
+	red:="0x" SubStr(inputColor,7,2)
 	red:=red+0
 	
-	msgBox, % "" . red . ", " . green . ", " . blue
-	if(blue=green && green=red && colorAtPixel!=MOUSE_COLOR){
+	;msgBox, % "" . red . ", " . green . ", " . blue
+	if(blue=green && green=red){
 		
 		return true
 	}
@@ -98,37 +96,62 @@ pixelCheckGrey(point){
  *  
  *  @return - true if there is a grey pixel in the box
  */
-boxCheckGrey(topLeft, bottomRight,foundPoint){
-	static currentGrey = darkestBobColor
-	step := 5
-	increment := GREY_INCREMENT*step
+checkForBobber(topLeft, bottomRight,foundPoint){
+	static lastBobColor := darkestBobColor-GREY_INCREMENT ;
+	static misses :=0
 	
-	checkingColor := darkestBobColor
+	leverage := 15 ;amount of variation allowed for the color
+	step := 1 ;the amount of shades of grey to go through each loop
 	
-	while(checkingColor<=lightestBobColor){
-		;msgBox, checking color %checkingColor%
+	;set the upper and lower bounds for finding color of the bobber
+	checkingColor := lastBobColor-(leverage*GREY_INCREMENT)
+	maxColor := lastBobColor+(leverage*GREY_INCREMENT)
+	
+	;if the last bob color is unreasonably low or high, we expand the color range to let us find it again
+	;step is increased to speed up the proccess
+	if(misses>=3 or lastBobColor<darkestBobColor or lastBobColor>lightestBobColor){
+		;msgBox, do it
+		checkingColor:=darkestBobColor
+		maxColor:=lightestBobColor
+		step := 5
+	}
+	;msgBox, start
+	;loop through all the shades of grey in the range
+	while(checkingColor<=maxColor){
+	
+		PixelSearch, foundX, foundY, topLeft.X,topLeft.Y , bottomRight.X, bottomRight.Y, checkingColor, 0, RGB, Fast 
 		
-		PixelSearch, foundX, foundY, topLeft.X,topLeft.Y , bottomRight.X, bottomRight.Y, checkingColor, step, RGB, Fast 
-		
+		;if color was found, reset the last color, reset the found point, and return true
 		if(ErrorLevel == 0 && checkingColor!=MOUSE_COLOR){ ;color was found
-			;msgBox, found %foundX% %foundY%
 			foundPoint.set(foundX,foundY)
+			
+			PixelGetColor, newBobColor, foundX, foundY, RGB
+			if(checkIfGrey(newBobColor)){
+				lastBobColor=newBobColor
+			}
+			
+			misses := 0
 			return true
 		}
 		
-		checkingColor+=increment
+		;go to the next shade of grey
+		checkingColor+=GREY_INCREMENT*step
 	}
-	;msgBox,end
+	
+	misses+=1
+	;msgBox, end
 	return false
 }
 
-checkForBobber(byref foundPoint){
-	if(boxCheckGrey(TLBobBoxPt,BRBobBoxPt,foundPoint)){
-		;msgBox, found it!
-		return true
-	}
-	
-	return false
+tohex(num)
+{
+  VarSetCapacity(buf, 40)
+  ;Change the %X to lowercase if you want the hex output in lowercase (ex: ff instead of FF)
+  if num is integer
+     DllCall("wsprintf", "str", buf, "str", "%X", "int64", num)
+  if num is float
+     DllCall("wsprintf", "str", buf, "str", "%X", "float", num)
+  return buf
 }
 
 mouseToPt(pt){
@@ -146,17 +169,17 @@ cast(){
 Pause, Toggle ;start off
 bobPt := new Point(0,0)
 
-;cast()
+cast()
 while(true){
 	
 	; mousemove, CAST_BTN_LOC.X, CAST_BTN_LOC.Y
 	;Click
 	
-	if(checkForBobber(bobPt)){
-		;mouseToPt(bobPt)
+	if(checkForBobber(TLBobBoxPt,BRBobBoxPt,bobPt)){
 		cast()
 		sleep 2500
 		cast()
+		mouseToPt(bobPt)
 	}
 	
 	
