@@ -179,7 +179,7 @@ while(true){
 		cast()
 		sleep 2500
 		cast()
-		mouseToPt(bobPt)
+		;mouseToPt(bobPt)
 	}
 	
 	
@@ -205,4 +205,14 @@ while(true){
 	BRBobBoxPt.set(mouseX,mouseY)
 	
 	msgBox, % "box: " . TLBobBoxPt.toString() . " - " . BRBobBoxPt.toString()
+	return
+	
+	
+#A::
+	keywait, LButton, D
+	KeyWait, LButton, U
+	MouseGetPos, mouseX, mouseY
+	CAST_BTN_LOC.set(mouseX,mouseY)
+	
+	msgBox, % "button: " . CAST_BTN_LOC.toString()
 	return
