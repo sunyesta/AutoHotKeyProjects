@@ -87,7 +87,7 @@ checkIfGrey(inputColor){
 
 checkTime(){
 	midtone = 0x808080
-	PixelGetColor, sand, BRBobBoxPt.X, BRBobBoxPt.Y, RGB
+	PixelGetColor, sand, TLBobBoxPt.X, TLBobBoxPt.Y, RGB
 	
 	if(sand >= midtone){
 		return true
