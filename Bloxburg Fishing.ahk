@@ -115,6 +115,13 @@ checkForBobber(topLeft, bottomRight,foundPoint){
 		maxColor:=lightestBobColor
 		step := 5
 	}
+	
+	if(misses >= 8){
+		step :=-5
+		checkingColor:=lightestBobColor
+		maxColor:=darkestBobColor
+		
+	}
 	;msgBox, start
 	;loop through all the shades of grey in the range
 	while(checkingColor<=maxColor){
