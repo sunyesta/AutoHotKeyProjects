@@ -85,6 +85,17 @@ checkIfGrey(inputColor){
 	return false
 }
 
+checkTime(){
+	midtone = 0x808080
+	PixelGetColor, sand, BRBobBoxPt.X, BRBobBoxPt.Y, RGB
+	
+	if(sand >= midtone){
+		return true
+	}else{
+		return false
+	}
+}
+
 /**
  *  checks if a pixel is grey in a given box on the screen
  *  
@@ -110,18 +121,22 @@ checkForBobber(topLeft, bottomRight,foundPoint){
 	;if the last bob color is unreasonably low or high, we expand the color range to let us find it again
 	;step is increased to speed up the proccess
 	if(misses>=3 or lastBobColor<darkestBobColor or lastBobColor>lightestBobColor){
-		;msgBox, do it
-		checkingColor:=darkestBobColor
-		maxColor:=lightestBobColor
-		step := 5
-	}
-	
-	if(misses >= 8){
-		step :=-5
-		checkingColor:=lightestBobColor
-		maxColor:=darkestBobColor
+		
+		;if daytime, start from lightest color and go to darkest
+		if(checkTime){
+			step :=-5
+			checkingColor:=lightestBobColor
+			maxColor:=darkestBobColor
+		
+		;if nighttime, start from darkest color and go to lightest
+		}else{
+			checkingColor:=darkestBobColor
+			maxColor:=lightestBobColor
+			step := 5
+		}
 		
 	}
+	
 	;msgBox, start
 	;loop through all the shades of grey in the range
 	while(checkingColor<=maxColor){
