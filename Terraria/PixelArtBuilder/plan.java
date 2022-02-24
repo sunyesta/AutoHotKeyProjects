@@ -31,3 +31,21 @@ for(int c=0; c< imgWidth; c++){ //start at left
     break 4 ropes that you are on
     stop holding up
 }
+
+
+rules:
+must be starting at center of block
+one block extra to right
+4 blocks extra at top
+must have no fall damage and grapple
+helpful to turn mouse off
+
+
+planned updates:
+!grapple for accuracy
+hotkeys for getting hotbar items instead of picking them; fix the point class so it is a cell class and it contains the cell number, if the number <=9, use the hotbar
+put most recently used colors in hotbar; store a list of when each block was last used in the hotbar and swap out the one with the lowest val; 
+
+
+notes:
+I think the problem is swapping the cell data

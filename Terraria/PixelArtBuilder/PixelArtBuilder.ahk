@@ -14,7 +14,12 @@ CoordMode,Mouse,Screen ;set coord mode for mouse to screen
 ;inventory stuff
 global ROPE := 0
 global PICKAXE := 1
+
+global ROWS := 5
+global COLS := 10
 global CELLS := 49
+
+global NULL = 0
 
 ;plr direction
 global LEFT := 0
@@ -30,23 +35,49 @@ global ON_SINGLE_ROPE_KNOT := 3
 global HORIZONTAL_STEP_TIME := 230
 global MIN_SLEEP := 100
 
+class Cell{
+	__New(x,y, i){
+		this.X := x
+		this.Y := y
+		this.Index := i
+		this.LastUsed := 0
+		return this
+	}
+	toString(){
+		return % "(" . this.x . ", " . this.y . ")"
+	}
+	
+	print(){
+		msgBox, % this.toString()
+	}
+}
+
 ; --------------- plr control functions ---------------
 
 stepRight(){
-	send, {d Down}
-	Sleep, HORIZONTAL_STEP_TIME
-	send, {d Up}
-	Sleep, HORIZONTAL_STEP_TIME
+	rightPt := getPtFromPlrOffset(1.1,.5,ON_FOOT_MID_OF_BLOCK)
+	MouseMove, rightPt.X, rightPt.Y
+	Sleep, 10
+	send, {e Down}
+	Sleep, 10
+	send, {e Up}
+	Sleep, 500
+	Send, {Space down}
+	sleep 10
+	Send, {Space up}
+	sleep 10
 }
 
 ; --------------- functions ---------------
 
 myMouseClick(x,y){
+	static MOUSE_WAIT_TIME = 30
 	MouseMove, x, y
+	sleep MOUSE_WAIT_TIME
 	Send, {LButton down}
-	sleep 10
+	sleep MOUSE_WAIT_TIME
 	Send, {LButton up}
-	sleep 10
+	sleep MOUSE_WAIT_TIME
 
 }
 
@@ -71,6 +102,83 @@ toggleItem(inventoryPointTable, blockColor){
 	static correctColor := 0xffe61e
 
 	myMouseClick(inventoryPointTable[blockColor].X, inventoryPointTable[blockColor].Y)
+	
+}
+
+getHotbarHotKey(index){
+	index += 1
+	index := Mod(index, COLS+1)
+	if(index = 10){
+		index := 0
+	}
+
+	if(index > 10){
+		msgBox, % "index too large: " . index
+		ExitApp
+	}
+
+	return index
+}
+
+getLRUColor(byref cellHolding, byref hotbar){
+	;msgBox, % "hotbar: " . obj2str(hotbar)
+	LRUColor := hotbar[0]
+
+	i := 1
+	while(i<COLS){
+		if(cellHolding[hotbar[i]].LastUsed < cellHolding[LRUColor].LastUsed){
+			LRUColor := hotbar[i]
+		}
+		i+=1
+	}
+
+	return LRUColor
+}
+
+swapCells(cellColor1, cellColor2, byref cellHolding){
+	;swap cells physically
+	
+	;msgBox, clicking
+	;msgBox, % "1: " . obj2str(cellHolding[cellColor1]) . " 2: " .  obj2str(cellHolding[cellColor2])
+	myMouseClick(cellHolding[cellColor1].X, cellHolding[cellColor1].Y) 
+	myMouseClick(cellHolding[cellColor2].X, cellHolding[cellColor2].Y) 
+	myMouseClick(cellHolding[cellColor1].X, cellHolding[cellColor1].Y) 
+
+	;swap cells in the code
+	;msgBox, % "bfr 1: " . obj2str(cellHolding[cellColor1]) . " 2: " .  obj2str(cellHolding[cellColor2])
+	temp := cellHolding[cellColor2]
+	cellHolding[cellColor2] := cellHolding[cellColor1]
+	cellHolding[cellColor1] := temp
+	;msgBox, % "after 1: " . obj2str(cellHolding[cellColor1]) . " 2: " .  obj2str(cellHolding[cellColor2])
+}
+
+grabItem(blockColor, byref cellHolding, byref hotbar){
+	static tick = 0
+	tick += 1
+	
+	;msgBox, % CELLS
+	if(cellHolding[blockColor].Index >= COLS){
+		;put item into hotbar
+		;msgBox, "swapping"
+		LRUColor := getLRUColor(cellHolding, hotbar)
+		;msgBox, % "lrucolor = " . LRUColor
+		;msgBox, % "bfr cur: " . obj2str(cellHolding[blockColor]) . " lru: " .  obj2str(cellHolding[LRUColor])
+		swapCells(blockColor, LRUColor, cellHolding)
+		;msgBox, % "back cur: " . obj2str(cellHolding[blockColor]) . " lru: " .  obj2str(cellHolding[LRUColor])
+		hotbar[cellHolding[blockColor].Index] := blockColor
+	}
+	;msgBox, % "hotbar = " . obj2str(hotbar)
+	
+
+	;grab the item now that it is in the hotbar
+	cellHolding[blockColor].LastUsed := tick
+	hotkey := getHotbarHotKey(cellHolding[blockColor].Index)
+	;msgBox, % "index = " . cell.Index
+	;msgBox, % "hotkey = " . hotkey
+	send, {%hotkey% Down}
+	sleep, 30
+	send, {%hotkey% Up}
+	sleep, 30
 	
 }
 
@@ -104,34 +212,41 @@ clickAtOffsetFromPlr(xOffset, yOffset, mobilityType){
 	Sleep, MIN_SLEEP
 }
 
-getPixelFromInventoryIndex(i){
+makeCellFromInventoryIndex(byref hotbar, curColor){
+	static i = -1
+	i+=1
 	startPt := new Point(50, 50)
 	step := 58
-	
-	rows := 5
-	cols := 10
-	
-	r := Floor(i / cols)
-	c := Mod(i,cols)
+
+	r := Floor(i / COLS)
+	c := Mod(i,COLS)
 
 	x := startPt.X + (c * step)
 	y := startPt.Y + (r * step)
 	;msgBox, % "pt" . new Point(x,y).toString()
-	return new Point(x, y)
+
+	if(i<COLS){
+		hotbar[i] := curColor
+	}
+
+	
+	return new Cell(x, y, i)
 }
 
-getColorTable(pixelArtImg){
+
+
+getColorTable(pixelArtImg, byref hotbar){
 	inventoryImg := Gdip_CreateBitmapFromFile("inventoryTemplate.png")
 	pGraphics := Gdip_GraphicsFromImage(inventoryImg)
 	
 	inventoryPointTable := {}
-	inventoryPointTable[ROPE] := getPixelFromInventoryIndex(0)
-	inventoryPointTable[PICKAXE] := getPixelFromInventoryIndex(1)
+	inventoryPointTable[ROPE] := makeCellFromInventoryIndex(hotbar, ROPE)
+	inventoryPointTable[PICKAXE] := makeCellFromInventoryIndex(hotbar, PICKAXE)
+
 
 	height := Gdip_GetImageHeight(pixelArtImg)
 	width := Gdip_GetImageWidth(pixelArtImg)
 
-	colorCount = 2
 	
 	;itterate through all the pixels in the image
 	x:=0
@@ -143,12 +258,13 @@ getColorTable(pixelArtImg){
 			;if a color isn't in the inventoryPointTable table, insert it and add it to the inventoryImg
 			if(!inventoryPointTable.HasKey(curColor)){
 				
-				inventoryPointTable[curColor] := getPixelFromInventoryIndex(colorCount)
+				inventoryPointTable[curColor] := makeCellFromInventoryIndex(hotbar, curColor)
 				
+				
+
 				pBrush := Gdip_BrushCreateSolid(curColor)
 				Gdip_FillRectangle(pGraphics, pBrush, inventoryPointTable[curColor].X, inventoryPointTable[curColor].Y, 20, 20)
 				
-				colorCount+=1
 
 				
 			}
@@ -171,24 +287,26 @@ getColorTable(pixelArtImg){
 build(){
 	;setup image for processing
     pToken := Gdip_Startup()
-    pixelArtImg := Gdip_CreateBitmapFromFile("fox.png")
+    pixelArtImg := Gdip_CreateBitmapFromFile("man_good.png")
     
 	height := Gdip_GetImageHeight(pixelArtImg)
 	width := Gdip_GetImageWidth(pixelArtImg)
 
-    inventoryPtTable := getColorTable(pixelArtImg)
+	hotbar := {} ;array filled with colors
+    inventoryPtTable := getColorTable(pixelArtImg, hotbar)
+	;msgbox, % Obj2Str(hotbar)
 	
+
     ;itterate through all the pixels in the image from bottom(+y) left(-x) to top(-y) right(+x) 1 col(x) at a time
 	x=0
 	while(x<width){
 		
 		;build rope of 4 to the right
-		toggleItem(inventoryPtTable, ROPE) ;grab rope
+		grabItem(ROPE, inventoryPtTable, hotbar)
 		clickAtOffsetFromPlr(1,0, ON_FOOT_MID_OF_BLOCK) 
 		clickAtOffsetFromPlr(1,-1, ON_FOOT_MID_OF_BLOCK) 
 		clickAtOffsetFromPlr(1,-2, ON_FOOT_MID_OF_BLOCK) 
 		clickAtOffsetFromPlr(1,-3, ON_FOOT_MID_OF_BLOCK)
-		toggleItem(inventoryPtTable, ROPE) ;return rope
 
 		stepRight() ;go to right of the rope
 		
@@ -207,30 +325,26 @@ build(){
 			curColor := Gdip_GetPixel( pixelArtImg, x, y)
 			
 			;place block below and to the left of the plr's feet
-			toggleItem(inventoryPtTable, curColor)
+			grabItem(curColor, inventoryPtTable, hotbar)
 			clickAtOffsetFromPlr(-1,0, ON_TOP_OF_MID_ROPE) 
-			toggleItem(inventoryPtTable, curColor)
 
 			;break rope below plr
-			toggleItem(inventoryPtTable, PICKAXE)
+			grabItem(PICKAXE, inventoryPtTable, hotbar)
 			clickAtOffsetFromPlr(0,0, ON_TOP_OF_MID_ROPE) 
-			toggleItem(inventoryPtTable, PICKAXE)
 
 			;place rope above plr
-			toggleItem(inventoryPtTable, ROPE)
+			grabItem(ROPE, inventoryPtTable, hotbar)
 			clickAtOffsetFromPlr(0,-4, ON_TOP_OF_MID_ROPE) 
-			toggleItem(inventoryPtTable, ROPE)
 
 			y-=1
 		}
 
 		;break ropes to get off
-		toggleItem(inventoryPtTable, PICKAXE) ;grab pickaxe
+		grabItem(PICKAXE, inventoryPtTable, hotbar) ;grab pickaxe
 		clickAtOffsetFromPlr(0,0, ON_TOP_OF_MID_ROPE) 
 		clickAtOffsetFromPlr(0,-1, ON_TOP_OF_MID_ROPE) 
 		clickAtOffsetFromPlr(0,-2, ON_TOP_OF_MID_ROPE) 
 		clickAtOffsetFromPlr(0,-3, ON_SINGLE_ROPE_KNOT) 
-		toggleItem(inventoryPtTable, PICKAXE) ;return pickaxe
 
 		sleep, 3000
 		send, {w Up} ;stop holding up
@@ -254,7 +368,7 @@ build(){
     ;send, {w Down}
 	;sleep, 10000
 	;msgBox, % "ready"
-	;stepLeft()
+	;stepRight()
 	
 	build()
     
