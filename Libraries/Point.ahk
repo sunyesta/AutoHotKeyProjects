@@ -30,3 +30,14 @@ class Point{
 	    this.set(mouseX,mouseY)
     }
 }
+
+pointClick(point){
+	static MOUSE_WAIT_TIME = 30
+	MouseMove, point.X, point.Y
+	sleep MOUSE_WAIT_TIME
+	Send, {LButton down}
+	sleep MOUSE_WAIT_TIME
+	Send, {LButton up}
+	sleep MOUSE_WAIT_TIME
+
+}
